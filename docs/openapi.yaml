@@ -1,0 +1,501 @@
+openapi: 3.0.3
+info:
+  title: Inventory Management API
+  version: 2.0.0
+  description: |
+    ระบบบริหารคลังสินค้า เน้นความถูกต้องของยอดสต็อกและการบันทึกประวัติทุกครั้งที่มีการปรับ
+
+    ทุก request ที่มี body ต้องส่ง header `Content-Type: application/json`
+servers:
+  - url: http://localhost:3000
+    description: เครื่องพัฒนา
+
+tags:
+  - name: Products
+    description: จัดการข้อมูลสินค้า
+  - name: Stock
+    description: ปรับสต็อกและดูประวัติการเคลื่อนไหว
+  - name: Categories
+    description: กลุ่มสินค้า
+  - name: System
+    description: สถานะระบบและภาพรวม
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      summary: ตรวจสถานะ API และฐานข้อมูล
+      responses:
+        '200':
+          description: พร้อมใช้งาน
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  database: { type: string, example: connected }
+        '503':
+          description: เชื่อมต่อฐานข้อมูลไม่ได้
+
+  /api/summary:
+    get:
+      tags: [System]
+      summary: ตัวเลขสรุปสำหรับหน้าแรก
+      responses:
+        '200':
+          description: สำเร็จ
+
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: รายการกลุ่มสินค้าทั้งหมด
+      responses:
+        '200':
+          description: สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Category' }
+                  count: { type: integer }
+    post:
+      tags: [Categories]
+      summary: เพิ่มกลุ่มสินค้า
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 100, example: Networking }
+                description: { type: string, maxLength: 255, example: อุปกรณ์เครือข่าย }
+      responses:
+        '201':
+          description: สร้างสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Category' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/categories/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    patch:
+      tags: [Categories]
+      summary: แก้ไขกลุ่มสินค้า
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 100 }
+                description: { type: string, maxLength: 255 }
+      responses:
+        '200': { description: สำเร็จ }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Categories]
+      summary: ลบกลุ่มสินค้า (ต้องไม่มีสินค้าอยู่ในกลุ่ม)
+      responses:
+        '204': { description: ลบสำเร็จ }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/products:
+    get:
+      tags: [Products]
+      summary: ค้นหาและแสดงรายการสินค้า
+      parameters:
+        - { name: search, in: query, schema: { type: string }, description: ค้นจากชื่อหรือ SKU }
+        - { name: category_id, in: query, schema: { type: integer } }
+        - { name: is_active, in: query, schema: { type: boolean } }
+        - { name: low_stock, in: query, schema: { type: boolean }, description: เฉพาะที่ต่ำกว่าจุดเตือน }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, sku, stock_quantity, cost_price, created_at], default: created_at }
+        - { name: order, in: query, schema: { type: string, enum: [asc, desc], default: desc } }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+    post:
+      tags: [Products]
+      summary: เพิ่มสินค้าใหม่
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductCreate' }
+            examples:
+              basic:
+                summary: สินค้าพร้อมยอดตั้งต้น
+                value:
+                  sku: IT-MS-002
+                  name: เมาส์ไร้สาย Logitech M331
+                  category_id: 1
+                  cost_price: 420
+                  unit: ตัว
+                  stock_quantity: 10
+                  low_stock_threshold: 5
+      responses:
+        '201':
+          description: สร้างสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Product' }
+        '409':
+          description: SKU ซ้ำ
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error: { code: SKU_ALREADY_EXISTS, message: SKU นี้ถูกใช้กับสินค้าอื่นแล้ว }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/products/low-stock:
+    get:
+      tags: [Products]
+      summary: สินค้าที่ใกล้หมด (ค่าเริ่มต้นคือน้อยกว่า 5 ชิ้น)
+      description: |
+        ไม่ส่ง `threshold` ระบบจะเทียบกับจุดเตือนของสินค้าแต่ละตัว (`low_stock_threshold` ค่าเริ่มต้น 5)
+        ส่ง `threshold` เมื่อต้องการใช้เกณฑ์เดียวกันทั้งระบบ นับเฉพาะสินค้าที่เปิดใช้งานอยู่
+      parameters:
+        - { name: threshold, in: query, schema: { type: integer, minimum: 0, example: 5 } }
+      responses:
+        '200':
+          description: สำเร็จ เรียงจากคงเหลือน้อยที่สุด
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  threshold: { type: integer, example: 5 }
+                  threshold_mode: { type: string, enum: [per_product, fixed] }
+                  count: { type: integer, example: 2 }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Product' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/products/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      tags: [Products]
+      summary: ข้อมูลสินค้ารายตัว
+      responses:
+        '200':
+          description: สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Product' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Products]
+      summary: แก้ไขข้อมูลสินค้า (แก้จำนวนสต็อกที่นี่ไม่ได้)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sku: { type: string, maxLength: 50 }
+                name: { type: string, maxLength: 255 }
+                description: { type: string, maxLength: 500 }
+                unit: { type: string, maxLength: 20 }
+                category_id: { type: integer }
+                cost_price: { type: number, minimum: 0 }
+                low_stock_threshold: { type: integer, minimum: 0 }
+                is_active: { type: boolean }
+      responses:
+        '200': { description: สำเร็จ }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422':
+          description: ข้อมูลไม่ผ่านการตรวจสอบ หรือพยายามแก้ stock_quantity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+    delete:
+      tags: [Products]
+      summary: ปิดการใช้งานสินค้า (soft delete)
+      parameters:
+        - { name: force, in: query, schema: { type: boolean, default: false }, description: ลบถาวร ทำได้เฉพาะสินค้าที่ยังไม่มีประวัติ }
+      responses:
+        '200': { description: ปิดการใช้งานแล้ว }
+        '204': { description: ลบถาวรแล้ว }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/products/{id}/transactions:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+      - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+      - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    get:
+      tags: [Products]
+      summary: ประวัติการเคลื่อนไหวของสินค้าชิ้นเดียว
+      responses:
+        '200':
+          description: สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/StockTransaction' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/stock/adjust:
+    patch:
+      tags: [Stock]
+      summary: ปรับเพิ่มหรือลดสต็อก
+      description: |
+        ค่าบวกคือรับเข้า ค่าลบคือตัดออก ห้ามเป็น 0
+
+        ทำงานใน transaction เดียว ล็อกแถวสินค้าด้วย `SELECT ... FOR UPDATE`
+        ถ้าผลลัพธ์ทำให้สต็อกติดลบ จะตอบ 409 และไม่มีการเปลี่ยนแปลงใด ๆ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StockAdjustRequest' }
+            examples:
+              receive:
+                summary: รับของเข้าคลัง
+                value: { product_id: 2, quantity: 10, reason: รับของจากซัพพลายเออร์, created_by: somchai }
+              issue:
+                summary: ตัดออกจากคลัง
+                value: { product_id: 2, quantity: -5, reason: เบิกใช้ภายใน }
+      responses:
+        '200':
+          description: ปรับสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      product: { type: object }
+                      adjustment:
+                        type: object
+                        properties:
+                          balance_before: { type: integer, example: 3 }
+                          change: { type: integer, example: 5 }
+                          balance_after: { type: integer, example: 8 }
+                      transaction: { $ref: '#/components/schemas/StockTransaction' }
+                  message: { type: string }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: สต็อกไม่พอ หรือสินค้าถูกปิดการใช้งาน
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example:
+                error:
+                  code: INSUFFICIENT_STOCK
+                  message: 'สต็อกไม่พอ: เมาส์ไร้สาย Logitech M331 คงเหลือ 3 ตัว แต่ขอตัด 5 ตัว'
+                  details: { product_id: 2, sku: IT-MS-002, stock_quantity: 3, requested: -5, shortfall: 2 }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/stock/bulk-adjust:
+    patch:
+      tags: [Stock]
+      summary: ปรับสต็อกหลายรายการในครั้งเดียว (ทั้งชุดสำเร็จหรือยกเลิกทั้งหมด)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/StockAdjustRequest' }
+      responses:
+        '200': { description: สำเร็จทุกรายการ }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /api/stock/transactions:
+    get:
+      tags: [Stock]
+      summary: ประวัติการเคลื่อนไหวทั้งระบบ
+      parameters:
+        - { name: product_id, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string, enum: [IN, OUT] } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, example: '2026-09-01' }
+        - { name: to, in: query, schema: { type: string, format: date-time }, example: '2026-09-30' }
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/StockTransaction' }
+                  meta: { $ref: '#/components/schemas/PageMeta' }
+
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+
+  responses:
+    NotFound:
+      description: ไม่พบข้อมูล
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error: { code: PRODUCT_NOT_FOUND, message: ไม่พบสินค้า id = 99 }
+    Conflict:
+      description: ขัดแย้งกับสถานะปัจจุบันของข้อมูล
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: ข้อมูลที่ส่งมาไม่ผ่านการตรวจสอบ
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: ต้องระบุ cost_price
+              details: { field: cost_price }
+
+  schemas:
+    Category:
+      type: object
+      properties:
+        id: { type: integer, example: 1 }
+        name: { type: string, example: IT }
+        description: { type: string, nullable: true }
+        product_count: { type: integer, example: 4 }
+        created_at: { type: string, format: date-time }
+
+    Product:
+      type: object
+      properties:
+        id: { type: integer, example: 2 }
+        sku: { type: string, example: IT-MS-002 }
+        name: { type: string, example: เมาส์ไร้สาย Logitech M331 }
+        description: { type: string, nullable: true }
+        unit: { type: string, example: ตัว }
+        cost_price: { type: number, example: 420 }
+        stock_quantity: { type: integer, example: 3 }
+        low_stock_threshold: { type: integer, example: 5 }
+        is_low_stock: { type: boolean, example: true }
+        stock_value: { type: number, example: 1260 }
+        category:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            name: { type: string, example: IT }
+        is_active: { type: boolean, example: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProductCreate:
+      type: object
+      required: [sku, name, category_id, cost_price]
+      properties:
+        sku: { type: string, maxLength: 50 }
+        name: { type: string, maxLength: 255 }
+        category_id: { type: integer, minimum: 1 }
+        cost_price: { type: number, minimum: 0 }
+        description: { type: string, maxLength: 500 }
+        unit: { type: string, maxLength: 20, default: ชิ้น }
+        stock_quantity: { type: integer, minimum: 0, default: 0 }
+        low_stock_threshold: { type: integer, minimum: 0, default: 5 }
+
+    StockAdjustRequest:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id: { type: integer, minimum: 1 }
+        quantity:
+          type: integer
+          description: ค่าบวก = รับเข้า, ค่าลบ = ตัดออก, ห้ามเป็น 0
+          example: -5
+        reason: { type: string, maxLength: 255, example: เบิกใช้ภายใน }
+        created_by: { type: string, maxLength: 100, example: somchai }
+
+    StockTransaction:
+      type: object
+      properties:
+        id: { type: integer }
+        product_id: { type: integer }
+        type: { type: string, enum: [IN, OUT] }
+        quantity: { type: integer, description: จำนวนบวกเสมอ ทิศทางดูจาก type }
+        change: { type: integer, description: จำนวนพร้อมเครื่องหมาย คำนวณให้เพื่อความสะดวก }
+        balance_before: { type: integer }
+        balance_after: { type: integer }
+        reason: { type: string, nullable: true }
+        created_by: { type: string, nullable: true }
+        transacted_at: { type: string, format: date-time }
+
+    PageMeta:
+      type: object
+      properties:
+        page: { type: integer, example: 1 }
+        limit: { type: integer, example: 20 }
+        total: { type: integer, example: 42 }
+        total_pages: { type: integer, example: 3 }
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, nullable: true }

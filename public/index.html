@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>คลังสินค้า · Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>คลังสินค้า</h1>
+      <p>ระบบบริหารสต็อกและประวัติการทำรายการ</p>
+    </div>
+  </div>
+  <div class="topbar__status">
+    <span id="connection" class="conn conn--checking">กำลังเชื่อมต่อ</span>
+    <a class="linkish" href="/docs/" target="_blank" rel="noopener">เอกสาร API</a>
+  </div>
+</header>
+
+<!-- แถบเติมสต็อก: สิ่งแรกที่ต้องเห็นเมื่อเปิดระบบ -->
+<section id="refill" class="refill" aria-live="polite">
+  <div class="refill__head">
+    <h2>ต้องเติมสต็อก</h2>
+    <span id="refillCount" class="refill__count">—</span>
+  </div>
+  <div id="refillList" class="refill__list">
+    <p class="refill__empty">กำลังตรวจสอบยอดคงเหลือ…</p>
+  </div>
+</section>
+
+<section class="readout" id="readout">
+  <div class="readout__item"><span class="readout__num" id="statSku">—</span><span class="readout__label">สินค้าที่เปิดใช้งาน</span></div>
+  <div class="readout__item"><span class="readout__num" id="statUnits">—</span><span class="readout__label">จำนวนรวมในคลัง</span></div>
+  <div class="readout__item"><span class="readout__num" id="statValue">—</span><span class="readout__label">มูลค่าสต็อกตามราคาทุน</span></div>
+  <div class="readout__item readout__item--warn"><span class="readout__num" id="statOut">—</span><span class="readout__label">สินค้าหมดคลัง</span></div>
+</section>
+
+<nav class="tabs" role="tablist">
+  <button class="tab is-active" data-tab="products" role="tab">สินค้า</button>
+  <button class="tab" data-tab="ledger" role="tab">ประวัติการเคลื่อนไหว</button>
+  <button class="tab" data-tab="categories" role="tab">กลุ่มสินค้า</button>
+</nav>
+
+<main>
+  <!-- ------------------------------------------------ สินค้า -->
+  <section id="panel-products" class="panel is-active">
+    <div class="toolbar">
+      <input id="search" class="field field--search" type="search" placeholder="ค้นหาชื่อสินค้า หรือ SKU" />
+      <select id="filterCategory" class="field">
+        <option value="">ทุกกลุ่มสินค้า</option>
+      </select>
+      <select id="filterSort" class="field">
+        <option value="created_at:desc">เพิ่มล่าสุดก่อน</option>
+        <option value="stock_quantity:asc">คงเหลือน้อยไปมาก</option>
+        <option value="name:asc">ชื่อ ก–ฮ</option>
+        <option value="cost_price:desc">ราคาทุนสูงไปต่ำ</option>
+      </select>
+      <label class="check"><input type="checkbox" id="filterLow" /> เฉพาะที่ใกล้หมด</label>
+      <label class="check"><input type="checkbox" id="filterInactive" /> แสดงที่ปิดใช้งาน</label>
+      <button id="btnNewProduct" class="btn btn--primary">เพิ่มสินค้า</button>
+    </div>
+
+    <div class="tablewrap">
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>สินค้า</th>
+            <th>กลุ่ม</th>
+            <th class="num">ราคาทุน</th>
+            <th class="num">คงเหลือ</th>
+            <th class="actions">จัดการ</th>
+          </tr>
+        </thead>
+        <tbody id="productRows">
+          <tr><td colspan="6" class="state">กำลังโหลดข้อมูล…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pager" id="productPager"></div>
+  </section>
+
+  <!-- ------------------------------------------------ ประวัติ -->
+  <section id="panel-ledger" class="panel">
+    <div class="toolbar">
+      <select id="ledgerType" class="field">
+        <option value="">ทั้งรับเข้าและตัดออก</option>
+        <option value="IN">เฉพาะรับเข้า</option>
+        <option value="OUT">เฉพาะตัดออก</option>
+      </select>
+      <input id="ledgerFrom" class="field" type="date" aria-label="ตั้งแต่วันที่" />
+      <input id="ledgerTo" class="field" type="date" aria-label="ถึงวันที่" />
+      <button id="ledgerReset" class="btn">ล้างตัวกรอง</button>
+    </div>
+
+    <div class="tablewrap">
+      <table class="grid">
+        <thead>
+          <tr>
+            <th>เวลา</th>
+            <th>สินค้า</th>
+            <th>ประเภท</th>
+            <th class="num">จำนวน</th>
+            <th class="num">คงเหลือหลังทำรายการ</th>
+            <th>เหตุผล</th>
+          </tr>
+        </thead>
+        <tbody id="ledgerRows">
+          <tr><td colspan="6" class="state">กำลังโหลดข้อมูล…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pager" id="ledgerPager"></div>
+  </section>
+
+  <!-- ------------------------------------------------ กลุ่มสินค้า -->
+  <section id="panel-categories" class="panel">
+    <form id="categoryForm" class="inlineform">
+      <input name="name" class="field" placeholder="ชื่อกลุ่ม เช่น Networking" required maxlength="100" />
+      <input name="description" class="field field--grow" placeholder="คำอธิบายสั้น ๆ (ไม่บังคับ)" maxlength="255" />
+      <button class="btn btn--primary" type="submit">เพิ่มกลุ่ม</button>
+    </form>
+    <div id="categoryList" class="catlist"></div>
+  </section>
+</main>
+
+<!-- ------------------------------------------------ ลิ้นชักปรับสต็อก -->
+<div id="scrim" class="scrim" hidden></div>
+
+<aside id="drawer" class="drawer" hidden aria-labelledby="drawerTitle">
+  <header class="drawer__head">
+    <div>
+      <p class="drawer__sku" id="drawerSku">—</p>
+      <h2 id="drawerTitle">—</h2>
+    </div>
+    <button class="iconbtn" id="drawerClose" aria-label="ปิด">✕</button>
+  </header>
+
+  <div class="drawer__body">
+    <div class="balance">
+      <div class="balance__now">
+        <span class="balance__num" id="drawerBalance">0</span>
+        <span class="balance__label">คงเหลือปัจจุบัน</span>
+      </div>
+      <span class="balance__arrow" aria-hidden="true">→</span>
+      <div class="balance__next">
+        <span class="balance__num" id="drawerPreview">0</span>
+        <span class="balance__label">หลังปรับ</span>
+      </div>
+    </div>
+
+    <form id="adjustForm" class="stack">
+      <div class="quickrow">
+        <button type="button" class="chipbtn" data-delta="-5">−5</button>
+        <button type="button" class="chipbtn" data-delta="-1">−1</button>
+        <button type="button" class="chipbtn" data-delta="1">+1</button>
+        <button type="button" class="chipbtn" data-delta="5">+5</button>
+        <button type="button" class="chipbtn" data-delta="10">+10</button>
+      </div>
+
+      <label class="lbl" for="adjustQty">จำนวนที่ปรับ (ใส่ค่าลบเพื่อตัดออก)</label>
+      <input id="adjustQty" name="quantity" class="field field--qty" type="number" step="1" value="1" required />
+
+      <label class="lbl" for="adjustReason">เหตุผล</label>
+      <input id="adjustReason" name="reason" class="field" list="reasons" maxlength="255" placeholder="เช่น รับของจากซัพพลายเออร์" />
+      <datalist id="reasons">
+        <option value="รับของจากซัพพลายเออร์"></option>
+        <option value="เบิกใช้ภายใน"></option>
+        <option value="ขายให้ลูกค้า"></option>
+        <option value="ตรวจนับประจำเดือน"></option>
+        <option value="ของชำรุด/สูญหาย"></option>
+      </datalist>
+
+      <label class="lbl" for="adjustBy">ผู้ทำรายการ</label>
+      <input id="adjustBy" name="created_by" class="field" maxlength="100" placeholder="ชื่อผู้บันทึก (ไม่บังคับ)" />
+
+      <p id="adjustHint" class="hint"></p>
+      <button class="btn btn--primary btn--block" id="adjustSubmit" type="submit">บันทึกการปรับสต็อก</button>
+    </form>
+
+    <section class="history">
+      <h3>ประวัติล่าสุดของสินค้านี้</h3>
+      <ul id="drawerHistory" class="history__list"><li class="state">—</li></ul>
+    </section>
+  </div>
+</aside>
+
+<!-- ------------------------------------------------ ฟอร์มสินค้า -->
+<dialog id="productDialog" class="dialog">
+  <form id="productForm" method="dialog">
+    <h2 id="productDialogTitle">เพิ่มสินค้า</h2>
+
+    <div class="grid2">
+      <div>
+        <label class="lbl" for="pfSku">SKU</label>
+        <input id="pfSku" name="sku" class="field" required maxlength="50" placeholder="IT-NB-001" />
+      </div>
+      <div>
+        <label class="lbl" for="pfCategory">กลุ่มสินค้า</label>
+        <select id="pfCategory" name="category_id" class="field" required></select>
+      </div>
+    </div>
+
+    <label class="lbl" for="pfName">ชื่อสินค้า</label>
+    <input id="pfName" name="name" class="field" required maxlength="255" placeholder="โน้ตบุ๊ก Dell Latitude 5450" />
+
+    <label class="lbl" for="pfDesc">รายละเอียด</label>
+    <input id="pfDesc" name="description" class="field" maxlength="500" placeholder="ไม่บังคับ" />
+
+    <div class="grid3">
+      <div>
+        <label class="lbl" for="pfCost">ราคาทุน (บาท)</label>
+        <input id="pfCost" name="cost_price" class="field" type="number" min="0" step="0.01" required />
+      </div>
+      <div>
+        <label class="lbl" for="pfUnit">หน่วยนับ</label>
+        <input id="pfUnit" name="unit" class="field" maxlength="20" value="ชิ้น" />
+      </div>
+      <div>
+        <label class="lbl" for="pfThreshold">เตือนเมื่อน้อยกว่า</label>
+        <input id="pfThreshold" name="low_stock_threshold" class="field" type="number" min="0" step="1" value="5" />
+      </div>
+    </div>
+
+    <div id="pfStockWrap">
+      <label class="lbl" for="pfStock">จำนวนตั้งต้น</label>
+      <input id="pfStock" name="stock_quantity" class="field" type="number" min="0" step="1" value="0" />
+      <p class="hint">บันทึกเป็นรายการรับเข้า “ยอดยกมาตอนสร้างสินค้า” ให้อัตโนมัติ</p>
+    </div>
+
+    <p id="pfError" class="hint hint--error" hidden></p>
+
+    <div class="dialog__actions">
+      <button type="button" class="btn" id="pfCancel">ยกเลิก</button>
+      <button type="submit" class="btn btn--primary" id="pfSubmit">บันทึกสินค้า</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

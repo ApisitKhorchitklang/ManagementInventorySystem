@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Inventory API · เอกสาร</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui.min.css" />
+<style>
+  body { margin: 0; font-family: 'IBM Plex Sans Thai', system-ui, sans-serif; }
+  .bar { background: #15282e; color: #f3f8f7; padding: 14px 24px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  .bar h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  .bar a { color: #9fb7b9; font-size: 13px; text-decoration: none; border-bottom: 1px solid #3c5b60; }
+  .bar a:hover { color: #f3f8f7; }
+  .fallback { padding: 24px; color: #5d7379; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Inventory Management API</h1>
+  <a href="/">← กลับหน้าใช้งาน</a>
+  <a href="/docs/API.md">เอกสารแบบ Markdown</a>
+  <a href="/docs/ER-DIAGRAM.md">โครงสร้างฐานข้อมูล</a>
+  <a href="/docs/openapi.yaml">openapi.yaml</a>
+</div>
+
+<div id="swagger"></div>
+<p class="fallback" id="fallback">
+  โหลด Swagger UI ไม่ได้ (ต้องต่ออินเทอร์เน็ต) เปิด <a href="/docs/API.md">API.md</a> แทนได้เลย
+</p>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-bundle.min.js"></script>
+<script>
+  if (window.SwaggerUIBundle) {
+    document.getElementById('fallback').remove();
+    SwaggerUIBundle({ url: '/docs/openapi.yaml', dom_id: '#swagger', docExpansion: 'list' });
+  }
+</script>
+</body>
+</html>

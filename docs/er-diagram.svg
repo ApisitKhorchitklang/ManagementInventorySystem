@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 440" width="1120" height="440" font-family="'IBM Plex Sans Thai', 'Segoe UI', system-ui, sans-serif">
+  <style>
+    .box { fill: #ffffff; stroke: #b9cac7; }
+    .head { fill: #15282e; }
+    .head-text { fill: #ffffff; font-size: 14px; font-weight: 600; }
+    .row { font-size: 12.5px; fill: #15282e; }
+    .type { font-size: 11.5px; fill: #5d7379; }
+    .key { font-size: 10px; font-weight: 700; fill: #0b6e78; }
+    .sep { stroke: #e4ecea; }
+    .link { stroke: #0b6e78; stroke-width: 1.6; fill: none; }
+    .card { font-size: 12px; fill: #0b6e78; font-weight: 600; }
+    .note { font-size: 11.5px; fill: #5d7379; }
+  </style>
+
+  <rect width="1120" height="440" fill="#edf1f0"/>
+
+  <!-- ================= categories ================= -->
+  <g transform="translate(30,142)">
+    <rect class="box" width="320" height="156" rx="6"/>
+    <path class="head" d="M0 6a6 6 0 0 1 6-6h308a6 6 0 0 1 6 6v30H0z"/>
+    <text class="head-text" x="14" y="24">categories · กลุ่มสินค้า</text>
+
+    <line class="sep" x1="0" y1="36" x2="320" y2="36"/>
+    <text class="key" x="14" y="57">PK</text>
+    <text class="row" x="40" y="57">id</text>
+    <text class="type" x="200" y="57">bigserial</text>
+
+    <text class="key" x="14" y="79">UK</text>
+    <text class="row" x="40" y="79">name</text>
+    <text class="type" x="200" y="79">varchar(100)</text>
+
+    <text class="row" x="40" y="101">description</text>
+    <text class="type" x="200" y="101">varchar(255)</text>
+
+    <text class="row" x="40" y="123">created_at</text>
+    <text class="type" x="200" y="123">timestamptz</text>
+
+    <text class="row" x="40" y="145">updated_at</text>
+    <text class="type" x="200" y="145">timestamptz</text>
+  </g>
+
+  <!-- ================= products ================= -->
+  <g transform="translate(400,65)">
+    <rect class="box" width="320" height="310" rx="6"/>
+    <path class="head" d="M0 6a6 6 0 0 1 6-6h308a6 6 0 0 1 6 6v30H0z"/>
+    <text class="head-text" x="14" y="24">products · สินค้า</text>
+
+    <line class="sep" x1="0" y1="36" x2="320" y2="36"/>
+    <text class="key" x="14" y="57">PK</text>
+    <text class="row" x="40" y="57">id</text>
+    <text class="type" x="196" y="57">bigserial</text>
+
+    <text class="key" x="14" y="79">FK</text>
+    <text class="row" x="40" y="79">category_id</text>
+    <text class="type" x="196" y="79">bigint</text>
+
+    <text class="key" x="14" y="101">UK</text>
+    <text class="row" x="40" y="101">sku</text>
+    <text class="type" x="196" y="101">varchar(50)</text>
+
+    <text class="row" x="40" y="123">name</text>
+    <text class="type" x="196" y="123">varchar(255)</text>
+
+    <text class="row" x="40" y="145">description</text>
+    <text class="type" x="196" y="145">varchar(500)</text>
+
+    <text class="row" x="40" y="167">unit</text>
+    <text class="type" x="196" y="167">varchar(20)</text>
+
+    <text class="row" x="40" y="189">cost_price</text>
+    <text class="type" x="196" y="189">numeric(12,2)</text>
+
+    <text class="row" x="40" y="211">stock_quantity</text>
+    <text class="type" x="196" y="211">integer ≥ 0</text>
+
+    <text class="row" x="40" y="233">low_stock_threshold</text>
+    <text class="type" x="230" y="233">integer</text>
+
+    <text class="row" x="40" y="255">is_active</text>
+    <text class="type" x="196" y="255">boolean</text>
+
+    <text class="row" x="40" y="277">created_at</text>
+    <text class="type" x="196" y="277">timestamptz</text>
+
+    <text class="row" x="40" y="299">updated_at</text>
+    <text class="type" x="196" y="299">timestamptz</text>
+  </g>
+
+  <!-- ================= stock_transactions ================= -->
+  <g transform="translate(770,98)">
+    <rect class="box" width="320" height="244" rx="6"/>
+    <path class="head" d="M0 6a6 6 0 0 1 6-6h308a6 6 0 0 1 6 6v30H0z"/>
+    <text class="head-text" x="14" y="24">stock_transactions · ประวัติสต็อก</text>
+
+    <line class="sep" x1="0" y1="36" x2="320" y2="36"/>
+    <text class="key" x="14" y="57">PK</text>
+    <text class="row" x="40" y="57">id</text>
+    <text class="type" x="206" y="57">bigserial</text>
+
+    <text class="key" x="14" y="79">FK</text>
+    <text class="row" x="40" y="79">product_id</text>
+    <text class="type" x="206" y="79">bigint</text>
+
+    <text class="row" x="40" y="101">type</text>
+    <text class="type" x="206" y="101">IN | OUT</text>
+
+    <text class="row" x="40" y="123">quantity</text>
+    <text class="type" x="206" y="123">integer &gt; 0</text>
+
+    <text class="row" x="40" y="145">balance_before</text>
+    <text class="type" x="206" y="145">integer ≥ 0</text>
+
+    <text class="row" x="40" y="167">balance_after</text>
+    <text class="type" x="206" y="167">integer ≥ 0</text>
+
+    <text class="row" x="40" y="189">reason</text>
+    <text class="type" x="206" y="189">varchar(255)</text>
+
+    <text class="row" x="40" y="211">created_by</text>
+    <text class="type" x="206" y="211">varchar(100)</text>
+
+    <text class="row" x="40" y="233">transacted_at</text>
+    <text class="type" x="206" y="233">timestamptz</text>
+  </g>
+
+  <!-- ================= relationships ================= -->
+  <!-- categories 1 ── ∞ products -->
+  <path class="link" d="M350 220 H375 V144 H400"/>
+  <path class="link" d="M384 136 L400 144 L384 152"/>
+  <text class="card" x="356" y="214">1</text>
+  <text class="card" x="381" y="138">∞</text>
+
+  <!-- products 1 ── ∞ stock_transactions -->
+  <path class="link" d="M720 220 H745 V177 H770"/>
+  <path class="link" d="M754 169 L770 177 L754 185"/>
+  <text class="card" x="726" y="214">1</text>
+  <text class="card" x="751" y="171">∞</text>
+
+  <text class="note" x="30" y="326">กลุ่มหนึ่งมีสินค้าได้หลายรายการ</text>
+  <text class="note" x="30" y="344">ลบกลุ่มที่ยังมีสินค้าไม่ได้ (ON DELETE RESTRICT)</text>
+
+  <text class="note" x="400" y="398">สินค้าหนึ่งรายการมีประวัติการเคลื่อนไหวได้ไม่จำกัด</text>
+  <text class="note" x="400" y="416">ทุกครั้งที่ stock_quantity เปลี่ยน ต้องมีแถวใหม่ใน stock_transactions เสมอ</text>
+</svg>
